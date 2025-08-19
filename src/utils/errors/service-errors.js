@@ -14,4 +14,4 @@ class ServiceError extends Error {
   }
 }
 
-module.exorts = ServiceError;
+module.exports = ServiceError;
