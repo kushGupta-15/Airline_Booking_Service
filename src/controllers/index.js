@@ -1,3 +1,3 @@
 module.exports = {
-    BookingController: require('./booking-controller.js'),
+    BookingController: require("./booking-controller")
 }
