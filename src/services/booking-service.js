@@ -17,9 +17,11 @@ class BookingService {
 
         // Circuit breaker for fetching flight details
         this.fetchFlightBreaker = new CircuitBreaker(
-            async (flightId) => {
+            async (flightId, correlationId) => {
                 const url = `${FLIGHT_SERVICE_PATH}/api/v1/flights/${flightId}`;
-                return await axios.get(url, { timeout: 3000 });
+                const headers = {};
+                if (correlationId) headers['x-correlation-id'] = correlationId;
+                return await axios.get(url, { headers, timeout: 3000 });
             },
             breakerOptions
         );
@@ -29,11 +31,13 @@ class BookingService {
 
         // Circuit breaker for updating flight inventory
         this.updateInventoryBreaker = new CircuitBreaker(
-            async (flightId, totalSeats) => {
+            async (flightId, totalSeats, correlationId) => {
                 const url = `${FLIGHT_SERVICE_PATH}/api/v1/flights/${flightId}`;
                 const internalToken = process.env.INTERNAL_SERVICE_KEY || 'airline-internal-secret';
+                const headers = { 'x-service-token': internalToken };
+                if (correlationId) headers['x-correlation-id'] = correlationId;
                 return await axios.patch(url, { totalSeats }, {
-                    headers: { 'x-service-token': internalToken },
+                    headers,
                     timeout: 3000
                 });
             },
@@ -54,7 +58,7 @@ class BookingService {
             // Step 1: Query flight inventory through Circuit Breaker
             let flightResponse;
             try {
-                flightResponse = await this.fetchFlightBreaker.fire(flightId);
+                flightResponse = await this.fetchFlightBreaker.fire(flightId, data.correlationId);
             } catch (breakerErr) {
                 if (this.fetchFlightBreaker.opened) {
                     throw new ServiceError(
@@ -82,7 +86,7 @@ class BookingService {
 
             // Step 3: Deduct inventory through Circuit Breaker
             try {
-                await this.updateInventoryBreaker.fire(flightId, flightData.totalSeats - data.noOfSeats);
+                await this.updateInventoryBreaker.fire(flightId, flightData.totalSeats - data.noOfSeats, data.correlationId);
                 seatsDeducted = true;
             } catch (inventoryErr) {
                 if (this.updateInventoryBreaker.opened) {
@@ -108,7 +112,8 @@ class BookingService {
                             recepientEmail: data.userEmail || 'customer@example.com',
                             notificationTime: new Date()
                         },
-                        service: 'CREATE_TICKET'
+                        service: 'CREATE_TICKET',
+                        correlationId: data.correlationId
                     };
                     await publishMessage(channel, REMINDER_BINDING_KEY, JSON.stringify(eventData));
                 }
@@ -125,7 +130,7 @@ class BookingService {
             if (seatsDeducted && flightData) {
                 console.warn(`[Saga Compensation] Restoring ${data.noOfSeats} seats for flight ${flightId}`);
                 try {
-                    await this.updateInventoryBreaker.fire(flightId, flightData.totalSeats);
+                    await this.updateInventoryBreaker.fire(flightId, flightData.totalSeats, data.correlationId);
                 } catch (compensationErr) {
                     console.error('[Saga Compensation] Critical error restoring seat inventory:', compensationErr);
                 }

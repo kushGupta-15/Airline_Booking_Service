@@ -12,7 +12,8 @@ class BookingController {
         try {
             const bookingPayload = {
                 ...req.body,
-                userId: req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : req.body.userId
+                userId: req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : req.body.userId,
+                correlationId: req.correlationId || req.headers['x-correlation-id']
             };
             const response = await bookingService.createBooking(bookingPayload);
             return res.status(StatusCodes.OK).json({
