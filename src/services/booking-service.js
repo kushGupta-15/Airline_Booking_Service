@@ -151,6 +151,33 @@ class BookingService {
             throw new ServiceError('Booking workflow failed', error.message || 'Internal service error');
         }
     }
+
+    async getBookingsByUser(userId) {
+        try {
+            const bookings = await this.BookingRepository.getByUserId(userId);
+            return bookings;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getAllBookings() {
+        try {
+            const bookings = await this.BookingRepository.getAll();
+            return bookings;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getBooking(bookingId) {
+        try {
+            const booking = await this.BookingRepository.get(bookingId);
+            return booking;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = BookingService;

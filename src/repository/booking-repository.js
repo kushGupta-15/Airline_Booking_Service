@@ -24,10 +24,41 @@ class BookingRepository {
             await booking.save();
             return booking;
         } catch (error) {
-            throw new AppError('RepositoryError', 'Cannot create Booking', 'There was some issue creating the booking, please try again later', StatusCodes.INTERNAL_SERVER_ERROR)
+            throw new AppError('RepositoryError', 'Cannot update Booking', 'There was some issue updating the booking, please try again later', StatusCodes.INTERNAL_SERVER_ERROR);
         }
     }
 
+    async get(bookingId) {
+        try {
+            const booking = await Booking.findByPk(bookingId);
+            return booking;
+        } catch (error) {
+            throw new AppError('RepositoryError', 'Cannot fetch Booking', 'There was some issue fetching the booking', StatusCodes.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async getByUserId(userId) {
+        try {
+            const bookings = await Booking.findAll({
+                where: { userId },
+                order: [['createdAt', 'DESC']]
+            });
+            return bookings;
+        } catch (error) {
+            throw new AppError('RepositoryError', 'Cannot fetch User Bookings', 'There was some issue fetching bookings', StatusCodes.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async getAll() {
+        try {
+            const bookings = await Booking.findAll({
+                order: [['createdAt', 'DESC']]
+            });
+            return bookings;
+        } catch (error) {
+            throw new AppError('RepositoryError', 'Cannot fetch Bookings', 'There was some issue fetching bookings', StatusCodes.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
 
 module.exports = BookingRepository;

@@ -38,7 +38,71 @@ class BookingController {
         publishMessage(channel, REMINDER_BIDING_KEY, JSON.stringify(data));
         return res.status(200).json({
             message: 'Successfuly publeshed th event'
-        })
+        });
+    }
+
+    async getUserBookings(req, res) {
+        try {
+            const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : parseInt(req.params.userId, 10);
+            const response = await bookingService.getBookingsByUser(userId);
+            return res.status(StatusCodes.OK).json({
+                message: "User bookings fetched successfully",
+                data: response,
+                success: true,
+                err: {}
+            });
+        } catch (error) {
+            return res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: error.message || 'Cannot fetch user bookings',
+                success: false,
+                err: error.explanation || error,
+                data: []
+            });
+        }
+    }
+
+    async getAll(req, res) {
+        try {
+            const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : null;
+            let response;
+            if (userId) {
+                response = await bookingService.getBookingsByUser(userId);
+            } else {
+                response = await bookingService.getAllBookings();
+            }
+            return res.status(StatusCodes.OK).json({
+                message: "Bookings fetched successfully",
+                data: response,
+                success: true,
+                err: {}
+            });
+        } catch (error) {
+            return res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: error.message || 'Cannot fetch bookings',
+                success: false,
+                err: error.explanation || error,
+                data: []
+            });
+        }
+    }
+
+    async get(req, res) {
+        try {
+            const response = await bookingService.getBooking(req.params.id);
+            return res.status(StatusCodes.OK).json({
+                message: "Booking fetched successfully",
+                data: response,
+                success: true,
+                err: {}
+            });
+        } catch (error) {
+            return res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: error.message || 'Cannot fetch booking',
+                success: false,
+                err: error.explanation || error,
+                data: {}
+            });
+        }
     }
 }
 
