@@ -10,7 +10,11 @@ class BookingController {
     }
     async create(req, res) {
         try {
-            const response = await bookingService.createBooking(req.body);
+            const bookingPayload = {
+                ...req.body,
+                userId: req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : req.body.userId
+            };
+            const response = await bookingService.createBooking(bookingPayload);
             return res.status(StatusCodes.OK).json({
                 message: "Booking created successfully",
                 data: response,

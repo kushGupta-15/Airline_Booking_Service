@@ -1,7 +1,8 @@
 const {BookingRepository} = require('../repository/index.js');
 const axios = require('axios')
-const {FLIGHT_SERVICE_PATH} = require('../config/serverConfig.js');
+const {FLIGHT_SERVICE_PATH, REMINDER_BINDING_KEY} = require('../config/serverConfig.js');
 const { ServiceError } = require('../utils/errors/index.js');
+const { createChannel, publishMessage } = require('../utils/messageQueue.js');
 class BookingService {
     constructor() {
         this.BookingRepository = new BookingRepository();
@@ -30,7 +31,26 @@ class BookingService {
             const updateFlightRequestURL = `${FLIGHT_SERVICE_PATH}/api/v1/flights/${flightId}`;
             await axios.patch(updateFlightRequestURL, {totalSeats: flightData.totalSeats - booking.noOfSeats});
 
-            const finalBooking = await this.BookingRepository.update(booking.id, {status: "Booked"})
+            const finalBooking = await this.BookingRepository.update(booking.id, {status: "Booked"});
+            
+            try {
+                const channel = await createChannel();
+                if (channel) {
+                    const eventData = {
+                        data: {
+                            subject: `Booking Confirmed for Flight ${flightData.flightNumber}`,
+                            content: `Your flight ${flightData.flightNumber} booking (Booking #${finalBooking.id}) is confirmed. Total Seats: ${booking.noOfSeats}. Total Price: INR ${totalCost}.`,
+                            recepientEmail: data.userEmail || 'customer@example.com',
+                            notificationTime: new Date()
+                        },
+                        service: 'CREATE_TICKET'
+                    };
+                    await publishMessage(channel, REMINDER_BINDING_KEY, JSON.stringify(eventData));
+                }
+            } catch (queueErr) {
+                console.error("Non-blocking error publishing booking event to RabbitMQ:", queueErr);
+            }
+
             return finalBooking;
 
         } catch (error) {
