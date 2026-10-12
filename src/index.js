@@ -13,6 +13,25 @@ const setupAndStartServer = () => {
 
     app.use('/api', apiRoutes);
 
+    app.get('/health', async (req, res) => {
+        try {
+            await db.sequelize.authenticate();
+            return res.status(200).json({
+                service: 'Airline_Booking_Service',
+                status: 'UP',
+                database: 'CONNECTED',
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            return res.status(503).json({
+                service: 'Airline_Booking_Service',
+                status: 'DEGRADED',
+                database: 'DISCONNECTED',
+                error: error.message
+            });
+        }
+    });
+
     app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
         // if(process.env.DB_SYNC) {
