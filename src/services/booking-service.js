@@ -31,7 +31,11 @@ class BookingService {
         this.updateInventoryBreaker = new CircuitBreaker(
             async (flightId, totalSeats) => {
                 const url = `${FLIGHT_SERVICE_PATH}/api/v1/flights/${flightId}`;
-                return await axios.patch(url, { totalSeats }, { timeout: 3000 });
+                const internalToken = process.env.INTERNAL_SERVICE_KEY || 'airline-internal-secret';
+                return await axios.patch(url, { totalSeats }, {
+                    headers: { 'x-service-token': internalToken },
+                    timeout: 3000
+                });
             },
             breakerOptions
         );

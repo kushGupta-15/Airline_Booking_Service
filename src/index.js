@@ -1,4 +1,6 @@
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
 const {PORT} = require('./config/serverConfig.js');
 const apiRoutes = require('./routes/index.js');
 const db = require('./models/index.js');
@@ -8,10 +10,13 @@ const app = express();
 
 const setupAndStartServer = () => {
 
+    app.use(helmet());
+    app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true}));
 
     app.use('/api', apiRoutes);
+    app.use('/bookingservice/api', apiRoutes);
 
     app.get('/health', async (req, res) => {
         try {
