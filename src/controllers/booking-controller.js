@@ -147,6 +147,32 @@ class BookingController {
             });
         }
     }
+
+    async cancel(req, res) {
+        try {
+            const bookingId = parseInt(req.params.id, 10);
+            const requesterUserId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : null;
+            const isAdmin = req.headers['x-is-admin'] === 'true';
+            const correlationId = req.correlationId || req.headers['x-correlation-id'];
+
+            const result = await bookingService.cancelBooking(bookingId, requesterUserId, isAdmin, correlationId);
+
+            return res.status(StatusCodes.OK).json({
+                message: "Booking itinerary cancelled and seat inventory restored successfully",
+                data: result,
+                success: true,
+                err: {}
+            });
+        } catch (error) {
+            console.error('[BookingController] Cancellation error:', error.message || error);
+            return res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: error.message || 'Cannot cancel booking',
+                success: false,
+                err: error.explanation || error.message || error,
+                data: {}
+            });
+        }
+    }
 }
 
 

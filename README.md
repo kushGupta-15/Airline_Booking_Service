@@ -184,7 +184,37 @@ Retrieves booking itineraries for the authenticated passenger or all itineraries
 
 ---
 
-### 3. Publish Message to Queue (Test / Trigger)
+### 3. Cancel Booking & Restock Seat Inventory (Saga Compensation)
+Cancels an existing flight booking, restores reserved seats back to the Flights Service, initiates refund calculations (90% net refund, 10% fee), and publishes an event to RabbitMQ.
+
+- **URL**: `PATCH /api/v1/bookings/:id/cancel` (also supports `POST`)
+- **Headers**:
+  - `x-user-id`: Authenticated requester user ID
+  - `x-is-admin`: `true` or `false`
+- **Success Response** (`200 OK`):
+  ```json
+  {
+    "message": "Booking itinerary cancelled and seat inventory restored successfully",
+    "data": {
+      "booking": {
+        "id": 9,
+        "flightId": 6,
+        "status": "Cancelled",
+        "noOfSeats": 2,
+        "totalCost": 6800
+      },
+      "refundAmount": 6120,
+      "cancellationFee": 680,
+      "restoredSeats": 2
+    },
+    "success": true,
+    "err": {}
+  }
+  ```
+
+---
+
+### 4. Publish Message to Queue (Test / Trigger)
 Publishes an event to the RabbitMQ exchange for test and debugging purposes.
 
 - **URL**: `POST /api/v1/publish`

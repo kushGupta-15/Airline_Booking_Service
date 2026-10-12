@@ -178,6 +178,81 @@ class BookingService {
             throw error;
         }
     }
+
+    async cancelBooking(bookingId, requesterUserId, isAdmin = false, correlationId = null) {
+        try {
+            const booking = await this.BookingRepository.get(bookingId);
+            if (!booking) {
+                throw new ServiceError('Booking Not Found', `No booking exists with ID ${bookingId}`);
+            }
+
+            // Authorization verification (IDOR protection)
+            if (requesterUserId && booking.userId !== requesterUserId && !isAdmin) {
+                throw new ServiceError('Forbidden', "You are not authorized to cancel another customer's booking.");
+            }
+
+            if (booking.status === 'Cancelled') {
+                throw new ServiceError('Already Cancelled', 'This booking itinerary is already marked as Cancelled.');
+            }
+
+            // Step 1: Query current flight inventory through Circuit Breaker
+            let flightData = null;
+            try {
+                const flightResponse = await this.fetchFlightBreaker.fire(booking.flightId, correlationId);
+                flightData = flightResponse.data.data;
+            } catch (fetchErr) {
+                console.warn('[Booking Cancellation] Downstream flight fetch warning:', fetchErr.message);
+            }
+
+            // Step 2: Compensate inventory: Restock reserved seats in Flights Service
+            if (flightData) {
+                const restoredSeats = (flightData.totalSeats || 0) + (booking.noOfSeats || 1);
+                console.log(`[Saga Compensation] Restoring ${booking.noOfSeats} seats to flight #${booking.flightId}. New seat count: ${restoredSeats}`);
+                try {
+                    await this.updateInventoryBreaker.fire(booking.flightId, restoredSeats, correlationId);
+                } catch (updateErr) {
+                    console.error('[Saga Compensation] Error replenishing seats in flight service:', updateErr.message);
+                }
+            }
+
+            // Step 3: Update booking status to 'Cancelled'
+            const updatedBooking = await this.BookingRepository.update(bookingId, { status: 'Cancelled' });
+
+            // Step 4: Publish cancellation notification event to RabbitMQ
+            try {
+                const channel = await createChannel();
+                if (channel) {
+                    const eventData = {
+                        data: {
+                            subject: `Booking #${booking.id} Cancelled`,
+                            content: `Your flight reservation (Booking #${booking.id}) has been successfully cancelled. ${booking.noOfSeats} seat(s) restored. Refund initiated.`,
+                            recepientEmail: 'customer@skyflow.com',
+                            notificationTime: new Date()
+                        },
+                        service: 'CANCEL_TICKET',
+                        correlationId: correlationId
+                    };
+                    await publishMessage(channel, REMINDER_BINDING_KEY, JSON.stringify(eventData));
+                }
+            } catch (queueErr) {
+                console.error("Non-blocking error publishing cancellation event to RabbitMQ:", queueErr);
+            }
+
+            const rawCost = updatedBooking.totalCost || 0;
+            return {
+                booking: updatedBooking,
+                refundAmount: Math.round(rawCost * 0.9),
+                cancellationFee: Math.round(rawCost * 0.1),
+                restoredSeats: booking.noOfSeats
+            };
+        } catch (error) {
+            console.error('Error in cancelBooking workflow:', error.message || error);
+            if (error.name === 'RepositoryError' || error.name === 'ValidationError' || error.name === 'ServiceError') {
+                throw error;
+            }
+            throw new ServiceError('Booking cancellation failed', error.message || 'Internal service error');
+        }
+    }
 }
 
 module.exports = BookingService;

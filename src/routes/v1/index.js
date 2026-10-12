@@ -8,5 +8,7 @@ const bookingController = new BookingController();
 router.post('/bookings', BookingMiddlewares.validateCreateBooking, bookingController.create);
 router.get('/bookings', bookingController.getAll);
 router.get('/bookings/:id', bookingController.get);
+router.patch('/bookings/:id/cancel', bookingController.cancel);
+router.post('/bookings/:id/cancel', bookingController.cancel);
 router.post('/publish', bookingController.sendMessageToQueue);
 module.exports = router;
