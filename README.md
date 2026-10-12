@@ -173,7 +173,18 @@ Executes the seat availability check, seat deduction, and booking persistence.
 
 ---
 
-### 2. Publish Message to Queue (Test / Trigger)
+### 2. Retrieve User Bookings (with IDOR Protection)
+Retrieves booking itineraries for the authenticated passenger or all itineraries if requested by an administrator.
+
+- **URL**: `GET /api/v1/bookings` or `GET /api/v1/bookings/user/:userId`
+- **Headers**:
+  - `x-user-id`: Authenticated user ID (injected by API Gateway)
+  - `x-is-admin`: `true` or `false` (injected by API Gateway)
+- **IDOR Security Guard**: Non-admin callers attempting to access another user's reservation IDs receive a `403 Forbidden` response.
+
+---
+
+### 3. Publish Message to Queue (Test / Trigger)
 Publishes an event to the RabbitMQ exchange for test and debugging purposes.
 
 - **URL**: `POST /api/v1/publish`
@@ -183,3 +194,4 @@ Publishes an event to the RabbitMQ exchange for test and debugging purposes.
     "message": "Successfuly publeshed th event"
   }
   ```
+
