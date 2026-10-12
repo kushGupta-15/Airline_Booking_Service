@@ -68,11 +68,16 @@ const setupAndStartServer = () => {
         });
     });
 
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
         console.log(`Server started on port ${PORT}`);
-        // if(process.env.DB_SYNC) {
-        //     db.sequelize.sync({alter: true});
-        // }
+        if (process.env.DB_SYNC === 'true') {
+            try {
+                await db.sequelize.sync({ alter: true });
+                console.log('[DB_SYNC] Booking service schema synced successfully.');
+            } catch (err) {
+                console.error('[DB_SYNC ERROR]', err.message);
+            }
+        }
     });
 }
 
