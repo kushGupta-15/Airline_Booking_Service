@@ -1,13 +1,17 @@
 const amqplib = require('amqplib'); 
 const {MESSAGE_BROKER_URL, EXCHANGE_NAME} = require('../config/serverConfig');
 const createChannel = async () => {
+    if (!MESSAGE_BROKER_URL) {
+        return null;
+    }
     try {
         const connection = await amqplib.connect(MESSAGE_BROKER_URL);
         const channel = await connection.createChannel();
         await channel.assertExchange(EXCHANGE_NAME, 'direct', false);
         return channel;
     } catch (error) {
-        console.log(error);
+        console.warn("RabbitMQ channel connection warning:", error.message);
+        return null;
     }
 }
 
