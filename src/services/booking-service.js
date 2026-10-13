@@ -5,8 +5,9 @@ const { FLIGHT_SERVICE_PATH, REMINDER_BINDING_KEY } = require('../config/serverC
 const { ServiceError } = require('../utils/errors/index.js');
 const { createChannel, publishMessage } = require('../utils/messageQueue.js');
 
+const breakerTimeout = parseInt(process.env.CIRCUIT_BREAKER_TIMEOUT || '10000', 10);
 const breakerOptions = {
-    timeout: 3000, // Trigger failure if response exceeds 3000ms
+    timeout: breakerTimeout, // Allow up to 10s for downstream service warm-up/cold starts
     errorThresholdPercentage: 50, // Open breaker if >= 50% requests fail
     resetTimeout: 10000 // Try half-open test after 10 seconds
 };
@@ -21,7 +22,7 @@ class BookingService {
                 const url = `${FLIGHT_SERVICE_PATH}/api/v1/flights/${flightId}`;
                 const headers = {};
                 if (correlationId) headers['x-correlation-id'] = correlationId;
-                return await axios.get(url, { headers, timeout: 3000 });
+                return await axios.get(url, { headers, timeout: breakerTimeout });
             },
             breakerOptions
         );
@@ -38,7 +39,7 @@ class BookingService {
                 if (correlationId) headers['x-correlation-id'] = correlationId;
                 return await axios.patch(url, { totalSeats }, {
                     headers,
-                    timeout: 3000
+                    timeout: breakerTimeout
                 });
             },
             breakerOptions
